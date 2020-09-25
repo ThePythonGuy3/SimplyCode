@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html style="height: 100%; background-color: #1e1e1e; overflow: hidden;">
+	<head style="height: 0%; width: 100%; position: absolute; left: 0; top: 0; background-color: #1e1e1e; overflow: hidden;">
+		<meta charset="UTF-8" />
+		<title>SimplyCode</title>
+		<div style="height: 40px;"></div>
+		<div id = "titleBar" style="height: 40px; width: 100%; position: absolute; left: 0; top: 0;"></div>
+		<script>
+			const ElectronTitlebarWindows = require('electron-titlebar-windows');
+			const {ipcRenderer} = require('electron');
+
+			const titlebar = new ElectronTitlebarWindows({
+				darkMode: true,
+				draggable: true,
+				backgroundColor: "#1e1e1e"
+			});
+	
+			titlebar.appendTo(document.getElementById("titleBar"));
+
+			titlebar.on('close', function(e) {
+				ipcRenderer.send('close')
+			});
+
+			titlebar.on('fullscreen', function(e) {
+				ipcRenderer.send('max')
+			});
+
+			titlebar.on('maximize', function(e) {
+				ipcRenderer.send('unmax')
+			});
+
+			titlebar.on('minimize', function(e) {
+				ipcRenderer.send('minimize')
+			});
+
+		</script>
+	</head>
+	
+	<body style="height: 100%; background-color: #1E1E1E; overflow: hidden;">
+		<!--<input type = "text" id = "entry"></button>
+		<button id = "change">set</button>-->
+		<div id="container" style="width: 100%; height: 100%; overflow: hidden;"></div>
+	</body>
+
+	<script>
+		(function () {
+			const path = require('path');
+			const amdLoader = require('../node_modules/monaco-editor/min/vs/loader.js');
+			const amdRequire = amdLoader.require;
+			const amdDefine = amdLoader.require.define;
+			const remote = require('electron').remote;
+			const { dialog } = remote;
+			const fs = require('fs');
+			var globalPath = "";
+
+			function uriFromPath(_path) {
+				var pathName = path.resolve(_path).replace(/\\/g, '/');
+				if (pathName.length > 0 && pathName.charAt(0) !== '/') {
+					pathName = '/' + pathName;
+				}
+				return encodeURI('file://' + pathName);
+			}
+
+			amdRequire.config({
+				baseUrl: uriFromPath(path.join(__dirname, '../node_modules/monaco-editor/min'))
+			});
+
+			// workaround monaco-css not understanding the environment
+			self.module = undefined;
+
+			amdRequire(['vs/editor/editor.main'], function () {
+				var editor = monaco.editor.create(document.getElementById('container'), {
+					value: ['function x() {', '\tconsole.log("Hello world!");', '}'].join('\n'),
+					language: 'javascript',
+					theme: "vs-dark",
+					automaticLayout: true,
+				});
+
+				var model = editor.getModel();
+
+				function updateText(text){
+					alert(text)
+				}
+
+				function KeyPress(e) {
+					var evtobj = window.event? event : e
+					if (evtobj.keyCode == 79 && evtobj.ctrlKey){
+						var path = (dialog.showOpenDialogSync({ properties: ['openFile'] }))
+						if(!path === undefined){
+							let content = editor.getValue();
+							const newModel = monaco.editor.createModel(
+  								content,
+  								undefined, // language
+  								monaco.Uri.file(path[0]) // uri
+							)
+							editor.setModel(newModel)
+							editor.setValue(fs.readFileSync(path[0]).toString());
+						}
+					}
+					if (evtobj.keyCode == 83 && evtobj.ctrlKey && evtobj.shiftKey){
+						var path = (dialog.showSaveDialogSync({}))
+						globalPath = path;
+						if(path != undefined){
+							let content = editor.getValue();
+							fs.writeFile(path, content, 'utf8', () => {});
+						}
+					}
+					if (evtobj.keyCode == 83 && evtobj.ctrlKey){
+						if(globalPath != ""){
+							let content = editor.getValue();
+							fs.writeFile(globalPath, content, 'utf8', () => {});
+						} else {
+							var path = (dialog.showSaveDialogSync({}))
+							globalPath = path;
+							if(path != undefined){
+								let content = editor.getValue();
+								fs.writeFile(path, content, 'utf8', () => {});
+							}
+						}
+					}
+				}
+	
+				document.onkeydown = KeyPress;
+				
+				/*var model = editor.getModel();
+				document.getElementById("change").onclick = () => {
+					monaco.editor.setModelLanguage(model, document.getElementById("entry").value)
+				}*/
+			});
+			
+		})(); 
+	</script>
+</html>

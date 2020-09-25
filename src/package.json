@@ -1,0 +1,13 @@
+{
+	"name": "helloworld",
+	"scripts": {
+		"execute": "electron ."
+	},
+	"main": "./main",
+	"devDependencies": {
+		"electron": "^10.1.2"
+	},
+	"dependencies": {
+		"electron-titlebar-windows": "^3.0.0"
+	}
+}
